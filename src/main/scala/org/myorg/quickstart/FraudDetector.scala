@@ -19,9 +19,13 @@
 package org.myorg.quickstart
 
 import java.util.Properties
+
 import org.apache.flink.api.common.serialization.SimpleStringSchema
+import org.apache.flink.streaming.util.serialization.JSONKeyValueDeserializationSchema
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer
+
+import scala.util.parsing.json.JSONObject
 
 object FraudDetector {
   def main(args: Array[String]) {
@@ -33,15 +37,21 @@ object FraudDetector {
     // only required for Kafka 0.8
     properties.setProperty("zookeeper.connect", "localhost:2181")
     properties.setProperty("group.id", "test")
-    val stream = env
-      .addSource(new FlinkKafkaConsumer[String]("clicks", new SimpleStringSchema(), properties))
 
-    // TODO : deserialiser en JSON plutot qu'en string pour pouvoir faire :
-    //  ex : stream.keyBy(...).map(elem => elem)
+    val kafkaConsumer = new FlinkKafkaConsumer(
+      "clicks",
+      new JSONKeyValueDeserializationSchema(false),
+      properties
+    )
+    //val stream = env.addSource(new FlinkKafkaConsumer[String]("clicks", new SimpleStringSchema(), properties))
+    val stream = env.addSource(kafkaConsumer)
+
+      // TODO : deserialiser en JSON plutot qu'en string pour pouvoir faire :
+      //  ex : stream.keyBy(...).map(elem => elem)
 
       .print()
 
     // execute program
-    env.execute("Test Job")
+    env.execute("Fraud detection")
   }
 }
