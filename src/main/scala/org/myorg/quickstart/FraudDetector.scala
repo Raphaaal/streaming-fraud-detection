@@ -26,9 +26,13 @@ import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer
 import org.apache.flink.api.common.functions.{AggregateFunction, MapFunction}
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.JsonNode
 import org.apache.flink.streaming.api.TimeCharacteristic
-import org.apache.flink.streaming.api.scala.DataStream
-import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows
+import org.apache.flink.streaming.api.datastream.DataStreamSink
+//import org.apache.flink.streaming.api.scala.DataStream
+import org.apache.flink.streaming.api.windowing.assigners._
 import org.apache.flink.streaming.api.windowing.time.Time
+import org.apache.flink.streaming.api.scala._
+import org.apache.flink.streaming.api.windowing.windows.{TimeWindow, Window}
+
 
 
 object FraudDetector {
@@ -55,9 +59,7 @@ object FraudDetector {
     // val stream = env.addSource(new FlinkKafkaConsumer[String]("clicks", new SimpleStringSchema(), properties))
     val stream : DataStream[ObjectNode] = env.addSource(kafkaConsumer).name("clicks")
     val streamValue : DataStream[JsonNode] = stream.map(value => value.get("value"))
-    val streamWithTimestampsAndWatermarks = streamValue.assignAscendingTimestamps( _.get("timestamp").asLong())
-
-    streamWithTimestampsAndWatermarks.print()
+    val streamWithTimestampsAndWatermarks : DataStream[JsonNode] = streamValue.assignAscendingTimestamps( _.get("timestamp").asLong())
 
     // Aggregate on stream keyed by IP
 
@@ -65,20 +67,24 @@ object FraudDetector {
      * The accumulator is used to keep a running sum and a count. The [getResult] method
      * computes the average.
      */
-    class AverageAggregate extends AggregateFunction[JsonNode, Long, Double] {
-      override def createAccumulator() = 0
+    class CountAggregate extends AggregateFunction[JsonNode, Long, Long] {
+      override def createAccumulator() = 0L
 
-      override def add(value: JsonNode, accumulator: Long) = accumulator + 1
+      override def add(value: JsonNode, accumulator: Long) = accumulator + 1L
 
       override def getResult(accumulator: Long) = accumulator
 
       override def merge(a: Long, b: Long) =  a + b
     }
 
-    val count = streamWithTimestampsAndWatermarks
+
+    val clicks_count : DataStream[Long] = streamWithTimestampsAndWatermarks
       .keyBy(_.get("ip"))
-      .window(TumblingEventTimeWindows.of(Time.seconds(5)))
-      .aggregate(new AverageAggregate)
+      .window(TumblingProcessingTimeWindows.of(Time.seconds(20)))
+      .aggregate(new CountAggregate)
+    //.window(TumblingEventTimeWindows.of(Time.seconds(10)))
+
+    clicks_count.print
 
     // Execute program
     env.execute("Fraud detection")
