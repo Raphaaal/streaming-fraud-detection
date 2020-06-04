@@ -19,6 +19,7 @@
 package org.myorg.quickstart
 import java.util.Properties
 
+import org.apache.flink.configuration.{ConfigConstants, Configuration, RestOptions}
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.node.ObjectNode
 import org.apache.flink.streaming.util.serialization.JSONKeyValueDeserializationSchema
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer
@@ -32,6 +33,7 @@ import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.api.watermark.Watermark
 import org.apache.flink.streaming.api.windowing.windows.{TimeWindow, Window}
+
 import scala.math.max
 
 
@@ -39,8 +41,10 @@ object FraudDetector {
   def main(args: Array[String]) {
 
     // Set up the streaming execution environment
-
-    val env = StreamExecutionEnvironment.getExecutionEnvironment
+    val config = new Configuration()
+    config.setInteger(RestOptions.PORT, 8082)
+    val env = StreamExecutionEnvironment.createLocalEnvironmentWithWebUI(config)
+    //val env = StreamExecutionEnvironment.getExecutionEnvironment
     env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
     env.setParallelism(1) // Test
 
@@ -61,18 +65,20 @@ object FraudDetector {
     val streamValue : DataStream[JsonNode] = stream.map {value => value.get("value") }
 
     // Set up event time with watermarks
+
     class TimestampExtractor extends AssignerWithPeriodicWatermarks[JsonNode] {
-      val maxOutOfOrderness = 3500L // 3.5 seconds
-      var currentMaxTimestamp: Long = 0L
+
+      //val maxOutOfOrderness = 3500L // 3.5 seconds
+      //var currentMaxTimestamp: Long = 0L
       override def extractTimestamp(element: JsonNode, previousElementTimestamp: Long): Long = {
         val timestamp = element.get("timestamp").asLong()
         //currentMaxTimestamp = max(timestamp, currentMaxTimestamp)
-        currentMaxTimestamp = max(timestamp, currentMaxTimestamp)
         timestamp
       }
       override def getCurrentWatermark(): Watermark = {
         // return the watermark as current highest timestamp minus the out-of-orderness bound
-        new Watermark(currentMaxTimestamp - maxOutOfOrderness)
+        //new Watermark(currentMaxTimestamp - maxOutOfOrderness)
+        new Watermark(System.currentTimeMillis)
       }
     }
 
@@ -87,7 +93,11 @@ object FraudDetector {
       .reduce { (v1, v2) => (v1._1, v1._2 + v2._2) }
       .filter {value => value._2 >= 6}
 
-    clicks_count.print
+    //clicks_count.print
+
+    streamEventTime
+      .map(x => (x.get("ip").asText(), x.get("timestamp").asLong, 1))
+      .print
 
     // Execute program
     env.execute("Fraud detection")
