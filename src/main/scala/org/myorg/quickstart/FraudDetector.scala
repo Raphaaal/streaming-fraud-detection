@@ -32,6 +32,7 @@ import org.apache.flink.streaming.api.windowing.assigners._
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.api.watermark.Watermark
+import org.apache.flink.streaming.api.windowing.triggers.{EventTimeTrigger, PurgingTrigger}
 import org.apache.flink.streaming.api.windowing.windows.{TimeWindow, Window}
 
 import scala.math.max
@@ -46,6 +47,7 @@ object FraudDetector {
     val env = StreamExecutionEnvironment.createLocalEnvironmentWithWebUI(config)
     //val env = StreamExecutionEnvironment.getExecutionEnvironment
     env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
+    env.setParallelism(1) // test
 
     val properties = new Properties()
     properties.setProperty("bootstrap.servers", "localhost:9092")
@@ -87,7 +89,9 @@ object FraudDetector {
       .reduce { (v1, v2) => (v1._1, v1._2 + v2._2) }
       //.filter {value => value._2 >= 6}
 
-    clicks_count.print
+    // Should output to proper Flink Sink (with checkpointing)
+    //clicks_count.rebalance.writeAsText("output/clicks_ip_output.txt").setParallelism(1)
+    clicks_count.print()
 
     // Execute program
     env.execute("Fraud detection")
