@@ -26,7 +26,7 @@ import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.JsonNode
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.datastream.DataStreamSink
-import org.apache.flink.streaming.api.functions.AssignerWithPeriodicWatermarks
+import org.apache.flink.streaming.api.functions.{AssignerWithPeriodicWatermarks, AssignerWithPunctuatedWatermarks}
 import org.apache.flink.streaming.api.functions.timestamps.BoundedOutOfOrdernessTimestampExtractor
 import org.apache.flink.streaming.api.windowing.assigners._
 import org.apache.flink.streaming.api.windowing.time.Time
@@ -46,7 +46,6 @@ object FraudDetector {
     val env = StreamExecutionEnvironment.createLocalEnvironmentWithWebUI(config)
     //val env = StreamExecutionEnvironment.getExecutionEnvironment
     env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
-    env.setParallelism(1) // Test
 
     val properties = new Properties()
     properties.setProperty("bootstrap.servers", "localhost:9092")
@@ -66,38 +65,29 @@ object FraudDetector {
 
     // Set up event time with watermarks
 
-    class TimestampExtractor extends AssignerWithPeriodicWatermarks[JsonNode] {
+    class PunctuatedAssigner extends AssignerWithPunctuatedWatermarks[JsonNode] {
 
-      //val maxOutOfOrderness = 3500L // 3.5 seconds
-      //var currentMaxTimestamp: Long = 0L
       override def extractTimestamp(element: JsonNode, previousElementTimestamp: Long): Long = {
-        val timestamp = element.get("timestamp").asLong()
-        //currentMaxTimestamp = max(timestamp, currentMaxTimestamp)
-        timestamp
+        element.get("timestamp").asLong()
       }
-      override def getCurrentWatermark(): Watermark = {
-        // return the watermark as current highest timestamp minus the out-of-orderness bound
-        //new Watermark(currentMaxTimestamp - maxOutOfOrderness)
-        new Watermark(System.currentTimeMillis)
+
+      override def checkAndGetNextWatermark(lastElement: JsonNode, extractedTimestamp: Long): Watermark = {
+        new Watermark(extractedTimestamp)
       }
     }
 
-    val streamEventTime : DataStream[JsonNode] = streamValue.assignTimestampsAndWatermarks(new TimestampExtractor)
+    val streamEventTime : DataStream[JsonNode] = streamValue.assignTimestampsAndWatermarks(new PunctuatedAssigner)
 
     // Aggregate on stream keyed by IP
 
     val ipStream : DataStream[(String, Int)] = streamEventTime.map(value => (value.get("ip").asText(), 1))
     val clicks_count : DataStream[(String, Int)] = ipStream
       .keyBy(0)
-      .window(TumblingEventTimeWindows.of(Time.seconds(20))) // .window(TumblingProcessingTimeWindows.of(Time.seconds(20)))
+      .window(TumblingEventTimeWindows.of(Time.seconds(10))) // .window(TumblingProcessingTimeWindows.of(Time.seconds(20)))
       .reduce { (v1, v2) => (v1._1, v1._2 + v2._2) }
-      .filter {value => value._2 >= 6}
+      //.filter {value => value._2 >= 6}
 
-    //clicks_count.print
-
-    streamEventTime
-      .map(x => (x.get("ip").asText(), x.get("timestamp").asLong, 1))
-      .print
+    clicks_count.print
 
     // Execute program
     env.execute("Fraud detection")
