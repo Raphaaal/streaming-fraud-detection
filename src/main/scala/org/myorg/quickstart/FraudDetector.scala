@@ -70,7 +70,7 @@ object FraudDetector {
     class PunctuatedAssigner extends AssignerWithPunctuatedWatermarks[JsonNode] {
 
       override def extractTimestamp(element: JsonNode, previousElementTimestamp: Long): Long = {
-        element.get("timestamp").asLong()
+        element.get("timestamp").asLong()*1000
       }
 
       override def checkAndGetNextWatermark(lastElement: JsonNode, extractedTimestamp: Long): Watermark = {
@@ -85,13 +85,12 @@ object FraudDetector {
     val ipStream : DataStream[(String, Int)] = streamEventTime.map(value => (value.get("ip").asText(), 1))
     val clicks_count : DataStream[(String, Int)] = ipStream
       .keyBy(0)
-      .window(TumblingEventTimeWindows.of(Time.seconds(10))) // .window(TumblingProcessingTimeWindows.of(Time.seconds(20)))
+      .window(TumblingEventTimeWindows.of(Time.minutes(60))) // .window(TumblingProcessingTimeWindows.of(Time.seconds(20)))
       .reduce { (v1, v2) => (v1._1, v1._2 + v2._2) }
-      //.filter {value => value._2 >= 6}
+      .filter {value => value._2 >= 6}
 
     // Should output to proper Flink Sink (with checkpointing)
-    //clicks_count.rebalance.writeAsText("output/clicks_ip_output.txt").setParallelism(1)
-    clicks_count.print()
+    clicks_count.rebalance.writeAsText("output/clicks_ip_output.txt").setParallelism(1)
 
     // Execute program
     env.execute("Fraud detection")
