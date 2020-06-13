@@ -114,7 +114,7 @@ object FraudDetector {
       .window(TumblingEventTimeWindows.of(Time.seconds(WindowTimeSecs)))
       .apply { (e1, e2) => (e1._1, 1.0 * (e2._2 / e1._2)) }
     val ctr_fraud = streamJoined.filter {value => value._2 >= 0.25}
-    clicks_count_fraud
+    ctr_fraud
       .rebalance.writeAsText("output/ctr_ip_output.txt", org.apache.flink.core.fs.FileSystem.WriteMode.OVERWRITE)
       .setParallelism(1) // Should output to proper Flink Sink (with checkpointing)
 
