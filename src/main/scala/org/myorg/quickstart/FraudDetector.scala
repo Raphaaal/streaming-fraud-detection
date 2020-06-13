@@ -88,7 +88,7 @@ object FraudDetector {
     // Format input events
     val ipStream_clicks : DataStream[(String, Int)] = streamEventTime_clicks.map(value => (value.get("ip").asText(), 1))
     val ipStream_displays : DataStream[(String, Int)] = streamEventTime_displays.map(value => (value.get("ip").asText(), 1))
-    val WindowTimeSecs = 600
+    val WindowTimeSecs = 3600
 
     // Aggregate on streams keyed by IP
     val clicks_count : DataStream[(String, Int)] = ipStream_clicks
@@ -112,9 +112,11 @@ object FraudDetector {
     val streamJoined : DataStream[(String, Double)] = displays_count.join(clicks_count)
       .where(value => value._1).equalTo(value => value._1)
       .window(TumblingEventTimeWindows.of(Time.seconds(WindowTimeSecs)))
-      .apply { (e1, e2) => (e1._1, 1.0 * (e1._2 / e2._2)) }
+      .apply { (e1, e2) => (e1._1, 1.0 * (e2._2 / e1._2)) }
     val ctr_fraud = streamJoined.filter {value => value._2 >= 0.25}
-    ctr_fraud.print
+    clicks_count_fraud
+      .rebalance.writeAsText("output/ctr_ip_output.txt", org.apache.flink.core.fs.FileSystem.WriteMode.OVERWRITE)
+      .setParallelism(1) // Should output to proper Flink Sink (with checkpointing)
 
     // PATTERN 3: nb displays / IP
     // TODO: Should output the full fraudulent event (not just the IP)
