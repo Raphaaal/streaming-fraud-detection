@@ -91,7 +91,7 @@ object FraudDetector {
     val uidStream_clicks : DataStream[(String, Int, String)] = streamEventTime_clicks.map(value => (value.get("uid").asText(), 1, value.toString))
     val uidStream_displays : DataStream[(String, Int)] = streamEventTime_displays.map(value => (value.get("uid").asText(), 1))
 
-    // Aggregate on streams keyed by IP
+    // Set event time window length
     val WindowTimeSecs = 3600
 
     // PATTERN 1: nb clicks / IP
@@ -137,6 +137,7 @@ object FraudDetector {
     val max_ctr_2 = 0.26
     val tolerance_displays_1 = 2
     val tolerance_displays_2 = 10
+
     val streamJoined : DataStream[(String, Int, Int, Double, String)] = displays_count_uid.join(clicks_count_uid)
       .where(value => value._1).equalTo(value => value._1)
       .window(TumblingEventTimeWindows.of(Time.seconds(WindowTimeSecs)))
@@ -156,10 +157,11 @@ object FraudDetector {
       .filter {value => (value._2 > tolerance_displays_1 &&
         ((value._2 <= tolerance_displays_2 && value._4 > max_ctr_1) || (value._2 > tolerance_displays_2 && value._4 > max_ctr_2))
         )}
+      
       .map(value => (value._1, value._2, value._3, value._4))
     ctr_debug
       .rebalance.writeAsText("output/ctr_fraud_events_debug_uid.txt", org.apache.flink.core.fs.FileSystem.WriteMode.OVERWRITE)
-      .setParallelism(1) // Should output to proper Flink Sink (with checkpointing)
+      .setParallelism(1)
 
     // Execute program
     env.execute("Fraud detection")
