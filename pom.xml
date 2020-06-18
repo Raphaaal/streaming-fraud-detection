@@ -20,14 +20,12 @@ under the License.
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-
-	<groupId>org.myorg.quickstart</groupId>
-	<artifactId>quickstart</artifactId>
+	<groupId>org.dauphine.streams</groupId>
+	<artifactId>streams</artifactId>
 	<version>0.1</version>
 	<packaging>jar</packaging>
-
-	<name>Flink Quickstart Job</name>
-	<url>http://www.myorganization.org</url>
+	<name>Flink Fraud Detection Job</name>
+	<url>http://www.dauphine.com</url>
 
 	<repositories>
 		<repository>
