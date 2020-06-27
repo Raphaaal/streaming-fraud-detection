@@ -13,14 +13,14 @@ Format: {"eventType":"display","uid":"c2c99a87-c8d5-4fbe-ae39-1fe411b9406e15","t
 Three potentially fraudulent patterns are being detected: 
 
 - Number of clicks by IP > 6 in a 1-hour tumbling window
-- Number of displays by IP > 15 a 1-hour tumbling window
+- Number of displays by IP > 15 in a 1-hour tumbling window
 - CTR by UserID > some threshold under various conditions:
-  - UID CTR > 0.50 and UID has been shown at least 2 displays a 1-hour tumbling window
-  - UID CTR > 0.25 and UID has been shown at least 10 displays a 1-hour tumbling window
+  - UID CTR > 0.50 and UID has been shown at least 2 displays in a 1-hour tumbling window
+  - UID CTR > 0.25 and UID has been shown at least 10 displays in a 1-hour tumbling window
 
-Note that the various thresholds and windows durations are customizable via functions parameters change (cf. docstring).
+Note that the various thresholds and windows durations are customizable via functions parameters (cf. docstring).
 
-Events that triggers any of these 3 patterns are considered suspiscious and are outputed to three different text files, respectively:
+Events that triggers any of these 3 patterns are considered suspiscious and are outputed to three different text files in an _output_ folder, respectively:
 
 - clicks_fraud_events.txt
 - displays_fraud_events.txt
@@ -30,7 +30,7 @@ Events that triggers any of these 3 patterns are considered suspiscious and are 
 
 You need working Maven 3.0.4 (or higher) and Java 8.x installations.
 
-In order to build this project you simply have to run the `mvn clean package` command in the project directory. You will find a JAR file that contains the application, plus connectors and libraries. Additionally, we provide the JAR in the _target_ directory.
+In order to build this project you simply have to run the `mvn clean package` command in the project directory. You will find a JAR file that contains the application, plus connectors and libraries. Additionally, we provide a JAR in the _target_ directory.
 
 ## How to run this application
 
