@@ -126,8 +126,10 @@ under the License.
 								<excludes>
 									<exclude>org.apache.flink:force-shading</exclude>
 									<exclude>com.google.code.findbugs:jsr305</exclude>
+									<!--
 									<exclude>org.slf4j:*</exclude>
 									<exclude>log4j:*</exclude>
+									-->
 								</excludes>
 							</artifactSet>
 							<filters>
@@ -144,8 +146,11 @@ under the License.
 							</filters>
 							<transformers>
 								<transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-									<mainClass>org.myorg.quickstart.FraudDetector</mainClass>
+									<mainClass>org.dauphine.streams.FraudDetector</mainClass>
 								</transformer>
+								<transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+								<resource>reference.conf</resource>
+							</transformer>
 							</transformers>
 						</configuration>
 					</execution>

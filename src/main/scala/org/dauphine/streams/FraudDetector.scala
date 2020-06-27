@@ -1,24 +1,17 @@
 package org.dauphine.streams
 
 import java.util.Properties
-import org.apache.flink.api.common.functions.CoGroupFunction
-import org.apache.flink.configuration.{ConfigConstants, Configuration, RestOptions}
+import org.apache.flink.configuration.{Configuration, RestOptions}
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.node.ObjectNode
 import org.apache.flink.streaming.util.serialization.JSONKeyValueDeserializationSchema
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.JsonNode
 import org.apache.flink.streaming.api.TimeCharacteristic
-import org.apache.flink.streaming.api.datastream.DataStreamSink
-import org.apache.flink.streaming.api.functions.{AssignerWithPeriodicWatermarks, AssignerWithPunctuatedWatermarks}
-import org.apache.flink.streaming.api.functions.timestamps.BoundedOutOfOrdernessTimestampExtractor
+import org.apache.flink.streaming.api.functions.{AssignerWithPunctuatedWatermarks}
 import org.apache.flink.streaming.api.windowing.assigners._
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.api.watermark.Watermark
-import org.apache.flink.streaming.api.windowing.triggers.{EventTimeTrigger, PurgingTrigger}
-import org.apache.flink.streaming.api.windowing.windows.{TimeWindow, Window}
-import org.apache.flink.util.Collector
-import scala.math.max
 
 
 object FraudDetector {
@@ -172,7 +165,7 @@ object FraudDetector {
     val uidStream_displays : DataStream[(String, Int)] = streamEventTime_displays.map(value => (value.get("uid").asText(), 1))
 
     // Set event time window length (1 hour)
-    val WindowTimeSecs = 60 // 3600
+    val WindowTimeSecs = 3600
 
     // PATTERN 1: monitor nb clicks by IP in window
     // Outputs clicks events whose IPs aggregated to more than 6 clicks during an hour
